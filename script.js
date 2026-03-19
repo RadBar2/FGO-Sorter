@@ -49,7 +49,7 @@ async function loadServants() {
         return {
             id: servant.id,
             name: servant.name,
-            class: servant.className.toLowerCase().replace("beast", "beast"),
+            class: (servant.className ? "beast" : "beast"),
             rarity: servant.rarity,
             gender: (servant.gender || "unknown").toLowerCase().replace("gender", ""),
             img: getServantImage(servant),
