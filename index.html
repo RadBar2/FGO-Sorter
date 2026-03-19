@@ -1,0 +1,101 @@
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FGO Servant Sorter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FGO Servant Sorter</h1>
+        </header>
+
+        <!-- Menu Ustawień -->
+        <div id="setup-menu" class="card-panel">
+            <div class="setting-row">
+                <h3>Classes:</h3>
+                <label><input type="checkbox" class="class-check" value="shielder" checked> Shielder</label>
+                <label><input type="checkbox" class="class-check" value="saber" checked> Saber</label>
+                <label><input type="checkbox" class="class-check" value="archer" checked> Archer</label>
+                <label><input type="checkbox" class="class-check" value="lancer" checked> Lancer</label>
+                <label><input type="checkbox" class="class-check" value="rider" checked> Rider</label>
+                <label><input type="checkbox" class="class-check" value="caster" checked> Caster</label>
+                <label><input type="checkbox" class="class-check" value="assassin" checked> Assassin</label>
+                <label><input type="checkbox" class="class-check" value="berserker" checked> Berserker</label>
+                <label><input type="checkbox" class="class-check" value="ruler" checked> Ruler</label>
+                <label><input type="checkbox" class="class-check" value="avenger" checked> Avenger</label>
+                <label><input type="checkbox" class="class-check" value="mooncancer" checked> Moon Cancer</label>
+                <label><input type="checkbox" class="class-check" value="alterego" checked> Alter Ego</label>
+                <label><input type="checkbox" class="class-check" value="pretender" checked> Pretender</label>
+                <label><input type="checkbox" class="class-check" value="foreigner" checked> Foreigner</label>
+                <label><input type="checkbox" class="class-check" value="beast" checked> Beast</label>
+            </div>
+
+            <div class="setting-row">
+                <h3>Rarity:</h3>
+				<label><input type="checkbox" class="rarity-check" value="1" checked> 1★</label>
+				<label><input type="checkbox" class="rarity-check" value="2" checked> 2★</label>
+                <label><input type="checkbox" class="rarity-check" value="3" checked> 3★</label>
+                <label><input type="checkbox" class="rarity-check" value="4" checked> 4★</label>
+                <label><input type="checkbox" class="rarity-check" value="5" checked> 5★</label>
+            </div>
+             <div class="setting-row">
+    			<h3>NP Color:</h3>
+    			<label><input type="checkbox" class="color-check" value="arts" checked> Arts 🔵</label>
+    			<label><input type="checkbox" class="color-check" value="buster" checked> Buster 🔴</label>
+    			<label><input type="checkbox" class="color-check" value="quick" checked> Quick 🟢</label>
+			</div>
+
+			<div class="setting-row">
+    			<h3>NP Type:</h3>
+    			<label><input type="checkbox" class="type-check" value="aoe" checked> AOE</label>
+    			<label><input type="checkbox" class="type-check" value="st" checked> ST</label>
+    			<label><input type="checkbox" class="type-check" value="support" checked> Support</label>
+			</div>
+
+			<div class="setting-row">
+    			<h3>Gender:</h3>
+    			<label><input type="checkbox" class="gender-check" value="female" checked> Female</label>
+    			<label><input type="checkbox" class="gender-check" value="male" checked> Male</label>
+    			<label><input type="checkbox" class="gender-check" value="unknown" checked> Unknown/Other</label>
+			</div>
+
+            <button onclick="initRanking()" class="btn btn-primary">Start</button>
+        </div>
+
+        <!-- Arena Porównań -->
+        <div id="arena" style="display:none;">
+            <div class="progress-section">
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+                <p id="progress-text">0%</p>
+            </div>
+
+            <div class="matchup-container">
+                <div class="servant-card" id="cardA" onclick="vote(0)"></div>
+                <div class="vs-badge">VS</div>
+                <div class="servant-card" id="cardB" onclick="vote(1)"></div>
+            </div>
+
+            <div class="controls">
+                <button onclick="undo()" class="btn btn-secondary">UNDO</button>
+                <button onclick="startNewRanking()" class="btn btn-secondary">RESET</button>
+            </div>
+        </div>
+
+        <!-- Wyniki Końcowe -->
+        <div id="results" style="display:none;" class="card-panel">
+            <h2>Your Ranking:</h2>
+            <div id="rank-list" class="final-list"></div>
+            <div class="export-actions">
+                <button onclick="copyToClipboard()" class="btn">Copy Text</button>
+                <button onclick="downloadAsTxt()" class="btn">Download .txt</button>
+                <button onclick="startNewRanking()" class="btn btn-primary">New Ranking</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
