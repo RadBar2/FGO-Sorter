@@ -49,7 +49,7 @@ async function loadServants() {
         return {
             id: servant.id,
             name: servant.name,
-            class: `${servant.className} ${servant.isBeast ? 'beast' : ''}`.trim(),
+            class: (servant.className.toLowerCase().includes("beast") ? "beast" : servant.className),
             rarity: servant.rarity,
             gender: (servant.gender || "unknown").toLowerCase().replace("gender", ""),
             img: getServantImage(servant),
