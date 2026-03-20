@@ -25,38 +25,39 @@ async function loadServants() {
             const nps = servant.noblePhantasms || [];
             const cardMap = { 1: "arts", 2: "buster", 3: "quick" };
 
-            let colors = new Set();
-            let targets = new Set();
+            let npTypes = [];
 
             nps.forEach(np => {
-                // 1. Map Color
-                if (cardMap[np.card]) colors.add(cardMap[np.card]);
+                const cardMap = { 1: "arts", 2: "buster", 3: "quick" };
 
-                // 2. Map Target (Fixing the debuffer "quiet problem")
+                let color = cardMap[np.card] || null;
                 let type = "support";
-                if (np.functions) {
-                for (const f of np.functions) {
-                    const isDamage = f.funcType.includes("damageNp");
-                    if (isDamage) {
-                        if (f.funcTargetType === "enemyAll") { type = "aoe"; break; }
-                        if (f.funcTargetType === "enemy") type = "st";
-                    }
-                }       
-            }
-            targets.add(type);
-        });
 
-        return {
-            id: servant.id,
-            name: servant.name,
-            class: (servant.className.toLowerCase().includes("beast") ? "beast" : servant.className),
-            rarity: servant.rarity,
-            gender: (servant.gender || "unknown").toLowerCase().replace("gender", ""),
-            img: getServantImage(servant),
-            npColors: Array.from(colors), 
-            npTargets: Array.from(targets)
-        };
-    });
+                if (np.functions) {
+                    for (const f of np.functions) {
+                        const isDamage = f.funcType.includes("damageNp");
+                        if (isDamage) {
+                            if (f.funcTargetType === "enemyAll") { type = "aoe"; break; }
+                            if (f.funcTargetType === "enemy") type = "st";
+                        }
+                    }
+                }
+
+                if (color) {
+                    npTypes.push({ color, type });
+                }
+            });
+
+            return {
+                id: servant.id,
+                name: servant.name,
+                class: (servant.className.toLowerCase().includes("beast") ? "beast" : servant.className),
+                rarity: servant.rarity,
+                gender: (servant.gender || "unknown").toLowerCase().replace("gender", ""),
+                img: getServantImage(servant),
+                npTypes // ← NEW
+            };
+        });
 
     preloadImages();
 }
@@ -114,9 +115,9 @@ function initRanking() {
         selClasses.includes(s.class) &&
         selRarities.includes(s.rarity) &&
         selGenders.includes(s.gender) &&
-        // Check if at least one of the servant's colors/targets is selected
-        s.npColors.some(c => selColors.includes(c)) &&
-        s.npTargets.some(t => selTypes.includes(t))
+        s.npTypes.some(np =>
+            selColors.includes(np.color) &&
+            selTypes.includes(np.type))       
     );
 
     if (activePool.length < 2) return alert("Pool is too small.");
