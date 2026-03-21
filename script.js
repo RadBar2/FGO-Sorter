@@ -287,10 +287,22 @@ function showResults() {
     document.getElementById('results').style.display = 'block';
 
     const sortedIds = topologicalSort();
-    document.getElementById('rank-list').innerHTML = sortedIds.map((id, idx) => {
+    let lastId = null;
+    let rank = 0;
+    let html = '';
+
+    sortedIds.forEach((id, idx) => {
         const s = allServants.find(x => x.id === id);
-        return `<div>${idx + 1}. <b>${s.name}</b> (${s.class})</div>`;
-    }).join('');
+
+        // Increment rank only if previous node has a DAG edge to this one
+        if (!lastId || hasPath(lastId, id)) {
+            rank = idx + 1;
+        }
+        html += `<div>${rank}. <b>${s.name}</b> (${s.class})</div>`;
+        lastId = id;
+    });
+
+    document.getElementById('rank-list').innerHTML = html;
 }
 
 function buildTieGroups() {
