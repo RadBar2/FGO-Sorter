@@ -293,16 +293,49 @@ function showResults() {
     }).join('');
 }
 
+function buildTieGroups() {
+    // Each key is a servant ID, value is the set of all tied IDs including itself
+    const tieGroups = {};
+
+    // Initialize with self
+    activePool.forEach(s => tieGroups[s.id] = new Set([s.id]));
+
+    // Merge sets for each tie
+    history.forEach(h => {
+        if (h.tie) {
+            const [a, b] = h.tie;
+            const union = new Set([...tieGroups[a], ...tieGroups[b]]);
+            union.forEach(id => tieGroups[id] = union);
+        }
+    });
+
+    return tieGroups;
+}
+
 function topologicalSort() {
-    let nodes = activePool.map(s => s.id), sorted = [], visited = new Set();
+    const tieGroups = buildTieGroups();
+    const nodes = activePool.map(s => s.id);
+    const sorted = [];
+    const visited = new Set();
+
     const visit = (n) => {
         if (visited.has(n)) return;
         visited.add(n);
+
+        // Visit all successors in the DAG
         (dag[n] || []).forEach(visit);
-        sorted.unshift(n); // Adds to front
+
+        // Only add the group once
+        const group = Array.from(tieGroups[n]);
+        if (!sorted.some(s => group.includes(s))) {
+            sorted.push(...group);
+        }
     };
+
     nodes.forEach(visit);
-    return sorted; // No reverse needed if using unshift
+
+    // Remove duplicates
+    return [...new Set(sorted)];
 }
 
 // ------------------ 9. Undo / Save / Load ------------------
