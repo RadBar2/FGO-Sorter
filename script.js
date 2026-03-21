@@ -156,38 +156,42 @@ function initMergeRounds(pool) {
 
 // ------------------ 5. Show Next Pair (ITERATIVE) ------------------
 function showNextPair() {
+    // We use a loop to "fast-forward" through automated wins 
+    // without adding to the call stack.
     while (true) {
-        // 1. Check if the current round is over
+        // A. Check if current round is finished
         if (currentQueue.length === 0) {
             if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
                 activePool = nextQueue[0];
                 showResults();
-                return; // Exit loop, we're done!
+                return; 
             }
             currentQueue = nextQueue;
             nextQueue = [];
         }
 
-        // 2. Handle the "odd one out" (Single group remains)
+        // B. Handle the odd-one-out
         if (currentQueue.length === 1) {
             nextQueue.push(currentQueue.shift());
-            continue; // Go to next iteration of WHILE loop instead of recursing
+            continue; // Jump to next iteration of the loop
         }
 
         const left = currentQueue.shift();
         const right = currentQueue.shift();
 
-        // 3. Automated Transitivity check
+        // C. Check transitivity (Automatic Wins)
         if (hasPath(left[0].id, right[0].id)) {
-            autoVote(0, left, right);
-            continue; // Skip to next pair automatically
+            // No need to call vote() here, just update data and CONTINUE the loop
+            processWin(0, left, right, false); // false = don't push to undo for autos
+            continue; 
         }
         if (hasPath(right[0].id, left[0].id)) {
-            autoVote(1, left, right);
-            continue; // Skip to next pair automatically
+            processWin(1, left, right, false);
+            continue;
         }
 
-        // 4. Manual vote required - BREAK the loop to wait for user input
+        // D. MANUAL VOTE REQUIRED
+        // We break the loop here to wait for the user to click a button.
         currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
         renderServant('cardA', left[0]);
         renderServant('cardB', right[0]);
@@ -197,14 +201,10 @@ function showNextPair() {
 }
 
 // ------------------ 6. Vote ------------------
-function vote(winnerIdx) {
-    
-    pushToUndo();
-
-    let leftList = [currentPair.a];
-    let rightList = [currentPair.b];
+// New helper to handle the data side of a win/loss
+function processWin(winnerIdx, leftList, rightList, isManual = true) {
     let group = [];
-
+    
     if (winnerIdx === 'tie') {
         group.push(...leftList, ...rightList);
         history.push({ tie: [leftList[0].id, rightList[0].id] });
@@ -212,13 +212,28 @@ function vote(winnerIdx) {
         const winnerList = winnerIdx === 0 ? leftList : rightList;
         const loserList = winnerIdx === 0 ? rightList : leftList;
 
-        winnerList.forEach(win => loserList.forEach(los => addEdge(win.id, los.id)));
-        winnerList.forEach(win => loserList.forEach(los => history.push({ win: win.id, los: los.id })));
+        winnerList.forEach(win => {
+            loserList.forEach(los => {
+                addEdge(win.id, los.id);
+                if (isManual) history.push({ win: win.id, los: los.id });
+            });
+        });
         group.push(...winnerList);
     }
 
     nextQueue.push(group);
+}
+
+// Updated vote function for the buttons
+function vote(winnerIdx) {
+    pushToUndo();
+    
+    // Process the current pair
+    processWin(winnerIdx, [currentPair.a], [currentPair.b], true);
+    
     saveState();
+    
+    // Call showNextPair once to find the next manual matchup
     showNextPair();
 }
 
