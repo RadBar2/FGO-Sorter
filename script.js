@@ -244,30 +244,21 @@ function renderServant(elementId, servant) {
 }
 
 function updateProgressBar() {
-    const total = activePool.length;
+    const n = activePool.length;
+    let known = 0;
+    for (let i = 0; i < n; i++) { 
+        const a = activePool[i].id;
+        for (let j = i + 1; j < n; j++) {
+            const b = activePool[j].id;
+            if (hasPath(a, b) || hasPath(b, a)) known++; 
+        } 
+    } 
+    
+    const max = n * (n - 1) / 2; 
+    const percent = Math.round((known / max) * 100) || 0;
 
-    // Count how many elements are already placed in merged rounds
-    let placed = 0;
-
-    // Count fully merged sublists from previous rounds
-    for (let i = 0; i < currentRound; i++) {
-        for (const sub of mergeRounds[i]) {
-            placed += sub.length;
-        }
-    }
-
-    // Add current merging progress
-    for (const sub of mergedRound) {
-        placed += sub.length;
-    }
-
-    // Normalize (avoid exceeding total)
-    placed = Math.min(placed, total);
-
-    const percent = Math.round((placed / total) * 100);
-
-    document.getElementById('progress-bar').style.width = percent + "%";
-    document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
+    document.getElementById('progress-bar').style.width = percent + "%"; 
+    document.getElementById('progress-text').innerText = "Progress: ${percent}%; "
 }
 
 // ------------------ 8. Results ------------------
