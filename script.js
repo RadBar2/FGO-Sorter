@@ -188,8 +188,20 @@ let rightRemaining = [];
 let mergedResult = [];
 
 function showNextPair() {
-    while (true) {
-        // A. Check if the current merge is finished
+    // 1. Process as much as we can in this "chunk"
+    let iterations = 0;
+    
+    while (leftRemaining.length > 0 || rightRemaining.length > 0 || currentQueue.length > 0) {
+        iterations++;
+        
+        // Safety: If we've processed 100 items without needing user input,
+        // yield control to the browser so the UI stays alive
+        if (iterations > 100) {
+            requestAnimationFrame(showNextPair);
+            return;
+        }
+
+        // --- Your existing logic (A through G) ---
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
             
             // If we have a result from a previous merge, push it to nextQueue
@@ -249,7 +261,7 @@ function showNextPair() {
             mergedResult.push(rightRemaining.shift());
             continue;
         }
-        
+
         const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
         if (isTied) {
             mergedResult.push(leftRemaining.shift());
@@ -257,12 +269,11 @@ function showNextPair() {
             continue;
         }
 
-        // H. Exit loop for User Input
         currentPair = { a: leftItem, b: rightItem };
         renderServant('cardA', leftItem);
         renderServant('cardB', rightItem);
         updateProgressBar();
-        break; 
+        return; // Exit completely, waiting for user click
     }
 }
 
@@ -497,7 +508,10 @@ function startNewRanking() {
 // ------------------ 11. Start ------------------
 async function start() {
     await loadServants();
-    loadState();
+    
+    setTimeout(() => {
+        loadState();
+    }, 100); 
 }
 
 function copyToClipboard() {
