@@ -225,12 +225,24 @@ function showNextPair() {
         const leftItem = leftRemaining[0];
         const rightItem = rightRemaining[0];
 
-        // 3. Automated Transitivity Check
-        if (hasPath(leftItem.id, rightItem.id)) {
+        // 3. Automated Check (Transitivity + Ties)
+        const leftId = leftItem.id;
+        const rightId = rightItem.id;
+
+        // Check if a win is already known
+        if (hasPath(leftId, rightId)) {
             mergedResult.push(leftRemaining.shift());
             continue;
         }
-        if (hasPath(rightItem.id, leftItem.id)) {
+        if (hasPath(rightId, leftId)) {
+            mergedResult.push(rightRemaining.shift());
+            continue;
+        }
+
+        // NEW: Check if a TIE is already known
+        const isAlreadyTied = history.some(h => h.tie && h.tie.includes(leftId) && h.tie.includes(rightId));
+        if (isAlreadyTied) {
+            mergedResult.push(leftRemaining.shift());
             mergedResult.push(rightRemaining.shift());
             continue;
         }
@@ -260,8 +272,11 @@ function vote(winnerIdx) {
         history.push({ win: rightItem.id, los: leftItem.id });
         mergedResult.push(rightRemaining.shift());
     } else { // Tie
+        // Record the tie in history
         history.push({ tie: [leftItem.id, rightItem.id] });
-        // In a tie, we move both to the merged result as a "unit"
+        
+        // IMPORTANT: To keep the merge sort stable, we move BOTH to the result.
+        // This effectively treats them as a single "unit" in the next round.
         mergedResult.push(leftRemaining.shift());
         mergedResult.push(rightRemaining.shift());
     }
@@ -306,10 +321,9 @@ function showResults() {
     document.getElementById('arena').style.display = 'none';
     document.getElementById('results').style.display = 'block';
 
-    // Build tie groups
+    // 1. Group IDs by ties
     const tieGroups = {};
     activePool.forEach(s => tieGroups[s.id] = new Set([s.id]));
-
     history.forEach(h => {
         if (h.tie) {
             const [a, b] = h.tie;
@@ -318,33 +332,28 @@ function showResults() {
         }
     });
 
-    // Topologically sort based on DAG and tie groups
-    const nodes = activePool.map(s => s.id);
-    const visited = new Set();
-    const sortedGroups = [];
+    // 2. Sort groups based on DAG
+    // Compare two groups: if any member of Group A beats any member of Group B, A > B
+    const uniqueGroups = Array.from(new Set(Object.values(tieGroups).map(s => Array.from(s).sort().join(','))))
+                              .map(s => s.split(',').map(Number));
 
-    const visit = (n) => {
-        if (visited.has(n)) return;
-        visited.add(n);
-
-        (dag[n] || []).forEach(visit);
-
-        const group = Array.from(tieGroups[n]);
-        if (!sortedGroups.some(g => g.some(id => group.includes(id)))) {
-            sortedGroups.push(group);
+    uniqueGroups.sort((groupA, groupB) => {
+        for (let idA of groupA) {
+            for (let idB of groupB) {
+                if (hasPath(idA, idB)) return -1; // A beats B
+                if (hasPath(idB, idA)) return 1;  // B beats A
+            }
         }
-    };
+        return 0;
+    });
 
-    nodes.forEach(visit);
-
-    // Render HTML with tied ranks
+    // 3. Render
     let html = '';
     let rank = 1;
-    sortedGroups.forEach(group => {
+    uniqueGroups.forEach(group => {
         group.forEach(id => {
-            const s = allServants.find(x => x.id === id);
-            // Use formatClassName here:
-            html += `<div>${rank}. <b>${s.name}</b> (${formatClassName(s.class)})</div>`;
+            const s = allServants.find(x => x.id == id);
+            if(s) html += `<div>${rank}. <b>${s.name}</b> (${formatClassName(s.class)})</div>`;
         });
         rank += group.length;
     });
