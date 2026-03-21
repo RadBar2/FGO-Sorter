@@ -190,6 +190,14 @@ let mergedResult = [];
 function showNextPair() {
     let iterations = 0;
     
+    if (currentQueue.length === 0 && leftRemaining.length === 0 && rightRemaining.length === 0) {
+        if (nextQueue.length === 1) {
+            activePool = nextQueue[0];
+            showResults()
+            return;
+        }
+    }
+
     // Changed the condition: as long as there is ANY work to do in the queue or current merge
     while (currentQueue.length > 0 || leftRemaining.length > 0 || rightRemaining.length > 0 || nextQueue.length > 0) {
         iterations++;
@@ -215,8 +223,7 @@ function showNextPair() {
                 }
                 currentQueue = nextQueue;
                 nextQueue = [];
-                // Safety: if after swapping we are still empty, something is wrong
-                if (currentQueue.length === 0) return;
+                continue;
             }
 
             // 3. Handle Odd One Out
@@ -313,19 +320,13 @@ function renderServant(elementId, servant) {
 
 function updateProgressBar() {
     const n = activePool.length;
-    let known = 0;
+    if (n <= 1) return;
 
-    for (let i = 0; i < n; i++) {
-        const a = activePool[i].id;
-        for (let j = i + 1; j < n; j++) {
-            const b = activePool[j].id;
-            if (hasPath(a, b) || hasPath(b, a)) known++;
-            else if (history.some(h => h.tie && h.tie.includes(a) && h.tie.includes(b))) known += 0.5;
-        }
-    }
+    const estimatedMaxVisits = Math.ceil(n * Math.log2(n));
 
-    const max = n * (n - 1) / 2;
-    const percent = Math.round((known / max) * 100) || 0;
+    let percent = Math.round((history.lenght / estimatedMaxVisits) * 100);
+
+    if (percent > 99) percent = 99;
 
     document.getElementById('progress-bar').style.width = percent + '%';
     document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
