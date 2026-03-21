@@ -96,18 +96,19 @@ function preloadImages() {
 
 // ------------------ 2. DAG / Transitivity ------------------
 function addEdge(win, los) {
-    if (!dag[win]) dag[win] = [];
-    dag[win].push(los);
-
     if (!reachable[win]) reachable[win] = new Set();
     if (!reachable[los]) reachable[los] = new Set();
 
-    reachable[win].add(los);
-    reachable[win] = new Set([...reachable[win], ...reachable[los]]);
+    if (reachable[win].has(los)) return; // Already known
 
+    reachable[win].add(los);
+    // Everything reachable from 'los' is now reachable from 'win'
+    reachable[los].forEach(item => reachable[win].add(item));
+
+    // Everything that can reach 'win' can now reach everything 'win' can reach
     for (let node in reachable) {
         if (reachable[node].has(win)) {
-            reachable[node] = new Set([...reachable[node], ...reachable[win]]);
+            reachable[win].forEach(item => reachable[node].add(item));
         }
     }
 }
