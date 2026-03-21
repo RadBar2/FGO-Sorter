@@ -190,38 +190,27 @@ function showNextPair() {
 }
 
 // ------------------ 6. Vote ------------------
-function showNextPair() {
-    // If no more pairs in current round, advance to next round
-    if (currentQueue.length === 0) {
-        if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
-            // Sorting complete
-            activePool = nextQueue[0];
-            showResults();
-            return;
-        }
-        currentQueue = nextQueue;
-        nextQueue = [];
+function vote(winnerIdx) {
+    // Existing vote logic, but instead of mergedRound, push winners/ties into nextQueue
+    let leftList = [currentPair.a];
+    let rightList = [currentPair.b];
+    let group = [];
+
+    if (winnerIdx === 'tie') {
+        group.push(...leftList, ...rightList);
+        history.push({ tie: [leftList[0].id, rightList[0].id] });
+    } else {
+        const winnerList = winnerIdx === 0 ? leftList : rightList;
+        const loserList = winnerIdx === 0 ? rightList : leftList;
+
+        winnerList.forEach(win => loserList.forEach(los => addEdge(win.id, los.id)));
+        winnerList.forEach(win => loserList.forEach(los => history.push({ win: win.id, los: los.id })));
+        group.push(...winnerList);
     }
 
-    // If only one group remains, carry it over
-    if (currentQueue.length === 1) {
-        nextQueue.push(currentQueue.shift());
-        showNextPair();
-        return;
-    }
-
-    const left = currentQueue.shift();
-    const right = currentQueue.shift();
-
-    // Check transitivity (automatic wins)
-    if (hasPath(left[0].id, right[0].id)) return vote(0, left, right);
-    if (hasPath(right[0].id, left[0].id)) return vote(1, left, right);
-
-    // Otherwise, manual vote required
-    currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
-    renderServant('cardA', left[0]);
-    renderServant('cardB', right[0]);
-    updateProgressBar();
+    nextQueue.push(group);
+    saveState();
+    showNextPair();
 }
 
 // ------------------ 7. Render & Progress ------------------
