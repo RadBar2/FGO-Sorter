@@ -207,40 +207,40 @@ function vote(winnerIdx) {
     undoStack.push(JSON.parse(JSON.stringify({
         mergeRounds, mergedRound, currentRound, currentMergeIndex, dag, history, reachable: serializeReachable()
     })));
-    if (undoStack.length > 20) undoStack.shift(); // Limit memory usage
+    if (undoStack.length > 20) undoStack.shift();
 
     const round = mergeRounds[currentRound];
     if (!round || !round[currentMergeIndex + 1]) return;
+
     const leftList = round[currentMergeIndex];
     const rightList = round[currentMergeIndex + 1];
 
-    // 1. Identify winner and loser based on the button clicked
-    const win = winnerIdx === 0 ? leftList.shift() : rightList.shift();
-    const los = winnerIdx === 0 ? rightList[0] : leftList[0];
+    if (winnerIdx === 'tie') {
+        // Merge both equally, no DAG edge
+        if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
+        mergedRound[currentMergeIndex / 2].push(leftList.shift());
+        mergedRound[currentMergeIndex / 2].push(rightList.shift());
+    } else {
+        // Existing winner logic
+        const win = winnerIdx === 0 ? leftList.shift() : rightList.shift();
+        const los = winnerIdx === 0 ? rightList[0] : leftList[0];
 
-    // 2. Record the relationship for transitivity (the DAG)
-    // Only add the edge if there is actually a loser left to compare against
-    if (los) {
-        addEdge(win.id, los.id);
-        history.push({ win: win.id, los: los.id });
-    }
-
-    // 3. Move the winner to the temporary "merged" results for this pair
-    if (!mergedRound[currentMergeIndex / 2]) {
-        mergedRound[currentMergeIndex / 2] = [];
-    }
-    mergedRound[currentMergeIndex / 2].push(win);
-
-    // 4. If one side of the duel is empty, move the survivors of the other side over
-    if (leftList.length === 0 || rightList.length === 0) {
-        const survivors = leftList.length > 0 ? leftList : rightList;
-        while (survivors.length > 0) {
-            mergedRound[currentMergeIndex / 2].push(survivors.shift());
+        if (los) {
+            addEdge(win.id, los.id);
+            history.push({ win: win.id, los: los.id });
         }
-        // This pair of sublists is fully merged; move to the next pair
-        currentMergeIndex += 2;
+
+        if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
+        mergedRound[currentMergeIndex / 2].push(win);
+
+        if (leftList.length === 0 || rightList.length === 0) {
+            const survivors = leftList.length > 0 ? leftList : rightList;
+            while (survivors.length > 0) mergedRound[currentMergeIndex / 2].push(survivors.shift());
+        }
     }
 
+    // Move to next pair
+    currentMergeIndex += 2;
     saveState();
     showNextPair();
 }
