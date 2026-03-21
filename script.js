@@ -160,11 +160,18 @@ function initRanking() {
 
     if (activePool.length < 2) return alert("Pool is too small.");
 
+    // Clear queues one last time right before starting
+    currentQueue = [];
+    nextQueue = [];
+    leftRemaining = [];
+    rightRemaining = [];
+
+    // Shuffle and start
+    activePool = activePool.sort(() => Math.random() - 0.5);
+    initMergeRounds(activePool);
+
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('arena').style.display = 'block';
-
-    // Shuffle randomly
-    activePool = activePool.sort(() => Math.random() - 0.5);
 
     initMergeRounds(activePool);
 }
@@ -416,14 +423,30 @@ function serializeReachable() {
 }
 
 function loadState() {
-    const saved = JSON.parse(localStorage.getItem('fgo_sorter_save'));
-    if (!saved || !saved.activePool || saved.activePool.length === 0) return;
+    const savedRaw = localStorage.getItem('fgo_sorter_save');
+    if (!savedRaw) return;
 
-    dag = saved.dag;
-    history = saved.history;
+    const saved = JSON.parse(savedRaw);
+    // If the saved pool is empty, treat it as no save
+    if (!saved.activePool || saved.activePool.length === 0) return;
+
+    dag = saved.dag || {};
+    history = saved.history || [];
     activePool = saved.activePool;
+    
+    // Restore reachable Sets
+    reachable = {};
+    if (saved.reachable) {
+        for (let key in saved.reachable) {
+            reachable[key] = new Set(saved.reachable[key]);
+        }
+    }
 
+    // IMPORTANT: After loading data, we need to re-initialize the queues
+    // or restore the exact queue state from the save.
+    // For now, let's just re-init the merge rounds:
     initMergeRounds(activePool);
+
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('arena').style.display = 'block';
 }
@@ -432,14 +455,18 @@ function loadState() {
 function startNewRanking() {
     localStorage.removeItem('fgo_sorter_save');
     
-    // Reset ALL state variables
+    // Reset Logic & Graph
     dag = {};
     reachable = {};
     history = [];
-    mergeRounds = [];
-    mergedRound = []; // <--- This was likely keeping old data
-    currentRound = 0;
-    currentMergeIndex = 0;
+    undoStack = []; // Clear the undo history too!
+    
+    // Reset Merge Queues (CRITICAL)
+    currentQueue = [];
+    nextQueue = [];
+    leftRemaining = [];
+    rightRemaining = [];
+    mergedResult = [];
     currentPair = null;
     activePool = [];
 
@@ -448,7 +475,6 @@ function startNewRanking() {
     document.getElementById('arena').style.display = 'none';
     document.getElementById('results').style.display = 'none';
     
-    // Progress bar reset
     document.getElementById('progress-bar').style.width = '0%';
     document.getElementById('progress-text').innerText = 'Progress: 0%';
 }
