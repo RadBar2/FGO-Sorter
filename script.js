@@ -246,19 +246,17 @@ function renderServant(elementId, servant) {
 function updateProgressBar() {
     const n = activePool.length;
     let known = 0;
-    for (let i = 0; i < n; i++) { 
+    for (let i = 0; i < n; i++) {
         const a = activePool[i].id;
         for (let j = i + 1; j < n; j++) {
             const b = activePool[j].id;
-            if (hasPath(a, b) || hasPath(b, a)) known++; 
-        } 
-    } 
-    
-    const max = n * (n - 1) / 2; 
+            if (hasPath(a, b) || hasPath(b, a)) known++;
+        }
+    }
+    const max = n * (n - 1) / 2;
     const percent = Math.round((known / max) * 100) || 0;
-
-    document.getElementById('progress-bar').style.width = percent + "%"; 
-    document.getElementById('progress-text').innerText = "Progress: ${percent}%; "
+    document.getElementById('progress-bar').style.width = percent + "%";
+    document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
 }
 
 // ------------------ 8. Results ------------------
