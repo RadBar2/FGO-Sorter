@@ -47,7 +47,7 @@ label { margin: 5px; cursor: pointer; display: inline-block; }
 }
 
 /* Progress Bar */
-#progress-container { width: 100%; background: #333; height: 12px; border-radius: 6px; margin-bottom: 20px; }
+#progress-container { width: 100%; background: var(--progress-bg); height: 12px; border-radius: 6px; margin-bottom: 20px; }
 #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #ffd700, #ff8c00); transition: 0.25s ease; }
 
 /* Buttons */
