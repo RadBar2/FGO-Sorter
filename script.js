@@ -191,7 +191,9 @@ function showNextPair() {
 
 // ------------------ 6. Vote ------------------
 function vote(winnerIdx) {
-    // Existing vote logic, but instead of mergedRound, push winners/ties into nextQueue
+    
+    pushToUndo();
+
     let leftList = [currentPair.a];
     let rightList = [currentPair.b];
     let group = [];
@@ -295,18 +297,35 @@ function showResults() {
 }
 
 // ------------------ 9. Undo / Save / Load ------------------
+function pushToUndo() {
+    // Deep clone the state objects
+    const stateSnapshot = {
+        dag: JSON.parse(JSON.stringify(dag)),
+        history: JSON.parse(JSON.stringify(history)),
+        currentQueue: JSON.parse(JSON.stringify(currentQueue)),
+        nextQueue: JSON.parse(JSON.stringify(nextQueue)),
+        currentPair: JSON.parse(JSON.stringify(currentPair)),
+        // Sets need special handling
+        reachable: serializeReachable() 
+    };
+    
+    undoStack.push(stateSnapshot);
+    
+    // Optional: Limit stack size to prevent memory issues
+    if (undoStack.length > 50) undoStack.shift();
+}
+
 function undo() {
     if (undoStack.length === 0) return alert("Nothing to undo!");
 
     const prevState = undoStack.pop();
     
-    // Restore variables
-    mergeRounds = prevState.mergeRounds;
-    mergedRound = prevState.mergedRound;
-    currentRound = prevState.currentRound;
-    currentMergeIndex = prevState.currentMergeIndex;
+    // Restore the specific variables your logic uses
     dag = prevState.dag;
     history = prevState.history;
+    currentQueue = prevState.currentQueue;
+    nextQueue = prevState.nextQueue;
+    currentPair = prevState.currentPair;
     
     // Restore reachable Sets
     reachable = {};
@@ -314,8 +333,14 @@ function undo() {
         reachable[key] = new Set(prevState.reachable[key]);
     }
 
-    saveState();
-    showNextPair();
+    // Re-render the UI based on the restored currentPair
+    if (currentPair) {
+        renderServant('cardA', currentPair.a);
+        renderServant('cardB', currentPair.b);
+    }
+    
+    updateProgressBar();
+    saveState(); // Update local storage with the "new" old state
 }
 
 function saveState() {
