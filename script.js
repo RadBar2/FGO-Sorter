@@ -245,18 +245,30 @@ function renderServant(elementId, servant) {
 
 function updateProgressBar() {
     const n = activePool.length;
-    let known = 0;
-    for (let i = 0; i < n; i++) {
-        const a = activePool[i].id;
-        for (let j = i + 1; j < n; j++) {
-            const b = activePool[j].id;
-            if (hasPath(a, b) || hasPath(b, a)) known++;
-        }
+
+    // --- Merge progress ---
+    let placed = 0;
+    for (let i = 0; i < currentRound; i++) {
+        for (const sub of mergeRounds[i]) placed += sub.length;
     }
-    const max = n * (n - 1) / 2;
-    const percent = Math.round((known / max) * 100) || 0;
+    for (const sub of mergedRound) placed += sub.length;
+
+    const mergeProgress = placed / n;
+
+    // --- Knowledge progress ---
+    let known = history.length;
+    const estimatedMax = n * Math.log2(n); // merge-sort comparison estimate
+
+    const knowledgeProgress = Math.min(known / estimatedMax, 1);
+
+    // --- Blend ---
+    const combined = (mergeProgress * 0.7) + (knowledgeProgress * 0.3);
+
+    const percent = Math.round(combined * 100);
+
     document.getElementById('progress-bar').style.width = percent + "%";
-    document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
+    document.getElementById('progress-text').innerText =
+    `Progress: ${percent}% (${history.length} comparisons)`;
 }
 
 // ------------------ 8. Results ------------------
