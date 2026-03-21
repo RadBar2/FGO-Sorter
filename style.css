@@ -2,12 +2,14 @@
 :root {
   --bg: white;
   --text: black;
+  --progress-bg: #ddd;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #121212;
     --text: #e0e0e0;
+    --progress-bg: #333
   }
 }
 
