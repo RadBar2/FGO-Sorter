@@ -154,92 +154,90 @@ function initMergeRounds(pool) {
     showNextPair();
 }
 
-// ------------------ 5. Show Next Pair (ITERATIVE) ------------------
+// New state variables for the merge process
+let leftRemaining = [];
+let rightRemaining = [];
+let mergedResult = [];
+
 function showNextPair() {
-    // We use a loop to "fast-forward" through automated wins 
-    // without adding to the call stack.
     while (true) {
-        // A. Check if current round is finished
-        if (currentQueue.length === 0) {
-            if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
-                activePool = nextQueue[0];
-                showResults();
-                return; 
+        // 1. If we aren't currently merging two lists, grab the next two from the queue
+        if (leftRemaining.length === 0 && rightRemaining.length === 0) {
+            if (currentQueue.length <= 1) {
+                if (currentQueue.length === 1) nextQueue.push(currentQueue.shift());
+                
+                if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
+                    activePool = nextQueue[0];
+                    showResults();
+                    return;
+                }
+                currentQueue = nextQueue;
+                nextQueue = [];
+                continue; 
             }
-            currentQueue = nextQueue;
-            nextQueue = [];
+            leftRemaining = currentQueue.shift();
+            rightRemaining = currentQueue.shift();
+            mergedResult = [];
         }
 
-        // B. Handle the odd-one-out
-        if (currentQueue.length === 1) {
-            nextQueue.push(currentQueue.shift());
-            continue; // Jump to next iteration of the loop
+        // 2. If one side is empty, push the rest of the other side to mergedResult
+        if (leftRemaining.length === 0) {
+            mergedResult.push(...rightRemaining);
+            rightRemaining = [];
+            nextQueue.push(mergedResult);
+            continue;
         }
-
-        const left = currentQueue.shift();
-        const right = currentQueue.shift();
-
-        // C. Check transitivity (Automatic Wins)
-        if (hasPath(left[0].id, right[0].id)) {
-            // No need to call vote() here, just update data and CONTINUE the loop
-            processWin(0, left, right, false); // false = don't push to undo for autos
-            continue; 
-        }
-        if (hasPath(right[0].id, left[0].id)) {
-            processWin(1, left, right, false);
+        if (rightRemaining.length === 0) {
+            mergedResult.push(...leftRemaining);
+            leftRemaining = [];
+            nextQueue.push(mergedResult);
             continue;
         }
 
-        // D. MANUAL VOTE REQUIRED
-        // We break the loop here to wait for the user to click a button.
-        currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
-        renderServant('cardA', left[0]);
-        renderServant('cardB', right[0]);
-        updateProgressBar();
-        break; 
-    }
-}
+        const leftItem = leftRemaining[0];
+        const rightItem = rightRemaining[0];
 
-// ------------------ 6. Vote ------------------
-// ------------------ 6. Vote ------------------
-function processWin(winnerIdx, leftList, rightList, isManual = true) {
-    let group = [];
-    
-    if (winnerIdx === 'tie') {
-        // We combine the lists into one "tied" group
-        group.push(...leftList, ...rightList);
-        if (isManual) {
-            history.push({ tie: [leftList[0].id, rightList[0].id] });
+        // 3. Automated Transitivity Check
+        if (hasPath(leftItem.id, rightItem.id)) {
+            mergedResult.push(leftRemaining.shift());
+            continue;
         }
-    } else {
-        const winnerList = winnerIdx === 0 ? leftList : rightList;
-        const loserList = winnerIdx === 0 ? rightList : leftList;
+        if (hasPath(rightItem.id, leftItem.id)) {
+            mergedResult.push(rightRemaining.shift());
+            continue;
+        }
 
-        winnerList.forEach(win => {
-            loserList.forEach(los => {
-                addEdge(win.id, los.id);
-                if (isManual) history.push({ win: win.id, los: los.id });
-            });
-        });
-        // The winner(s) move forward to the next round of the merge
-        group.push(...winnerList);
-    }
-
-    // CRITICAL: This was likely failing because it was outside the logic block 
-    // or receiving empty groups.
-    if (group.length > 0) {
-        nextQueue.push(group);
+        // 4. Manual Vote Required
+        currentPair = { a: leftItem, b: rightItem };
+        renderServant('cardA', leftItem);
+        renderServant('cardB', rightItem);
+        updateProgressBar();
+        break;
     }
 }
 
 function vote(winnerIdx) {
     if (!currentPair) return;
-    
     pushToUndo();
-    
-    // Use the full lists from the current pair (important for merge sort)
-    processWin(winnerIdx, currentPair.leftList, currentPair.rightList, true);
-    
+
+    const leftItem = leftRemaining[0];
+    const rightItem = rightRemaining[0];
+
+    if (winnerIdx === 0) { // Left Wins
+        addEdge(leftItem.id, rightItem.id);
+        history.push({ win: leftItem.id, los: rightItem.id });
+        mergedResult.push(leftRemaining.shift());
+    } else if (winnerIdx === 1) { // Right Wins
+        addEdge(rightItem.id, leftItem.id);
+        history.push({ win: rightItem.id, los: leftItem.id });
+        mergedResult.push(rightRemaining.shift());
+    } else { // Tie
+        history.push({ tie: [leftItem.id, rightItem.id] });
+        // In a tie, we move both to the merged result as a "unit"
+        mergedResult.push(leftRemaining.shift());
+        mergedResult.push(rightRemaining.shift());
+    }
+
     saveState();
     showNextPair();
 }
