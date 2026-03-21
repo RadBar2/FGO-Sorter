@@ -189,57 +189,58 @@ let mergedResult = [];
 
 function showNextPair() {
     while (true) {
-        // 1. Reset/Fetch new lists to merge
+        // A. Check if the current merge is finished
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
-            if (currentQueue.length <= 1) {
-                if (currentQueue.length === 1) nextQueue.push(currentQueue.shift());
-                
-                if (nextQueue.length === 1) {
-                    // Check if we are truly done
-                    if (nextQueue[0].length === activePool.length) {
-                        activePool = nextQueue[0];
-                        showResults();
-                        return;
-                    }
-                }
-                
-                if (nextQueue.length > 0) {
-                    currentQueue = nextQueue;
-                    nextQueue = [];
-                    continue; 
-                } else {
-                    return; // Safety exit
-                }
+            
+            // If we have a result from a previous merge, push it to nextQueue
+            if (mergedResult.length > 0) {
+                nextQueue.push(mergedResult);
+                mergedResult = [];
             }
+
+            // B. If currentQueue is empty, we finished a whole round of merges
+            if (currentQueue.length === 0) {
+                if (nextQueue.length === 1) {
+                    // Sorting is completely finished
+                    activePool = nextQueue[0];
+                    showResults();
+                    return; 
+                }
+                currentQueue = nextQueue;
+                nextQueue = [];
+                // If there's still nothing to compare, break safety
+                if (currentQueue.length === 0) return;
+            }
+
+            // C. Handle the "Odd one out" (only one list left in the queue)
+            if (currentQueue.length === 1) {
+                nextQueue.push(currentQueue.shift());
+                continue; // Back to top to check if nextQueue is finished
+            }
+
+            // D. Start a new merge between two lists
             leftRemaining = currentQueue.shift();
             rightRemaining = currentQueue.shift();
             mergedResult = [];
         }
 
-        // 2. Handle empty sides
+        // E. Standard Merge Logic (move remaining if one side is empty)
         if (leftRemaining.length === 0) {
             mergedResult.push(...rightRemaining);
             rightRemaining = [];
-            nextQueue.push(mergedResult);
-            continue;
+            continue; 
         }
         if (rightRemaining.length === 0) {
             mergedResult.push(...leftRemaining);
             leftRemaining = [];
-            nextQueue.push(mergedResult);
             continue;
         }
 
-        // 3. Get actual servant objects
+        // F. Manual Comparison logic
         const leftItem = leftRemaining[0];
         const rightItem = rightRemaining[0];
 
-        if (!leftItem || !rightItem) {
-            console.error("Found undefined item in queue");
-            return;
-        }
-
-        // 4. Automated Transitivity / Tie Checks
+        // G. Transitivity / Tie Automated Checks
         if (hasPath(leftItem.id, rightItem.id)) {
             mergedResult.push(leftRemaining.shift());
             continue;
@@ -251,24 +252,22 @@ function showNextPair() {
         
         const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
         if (isTied) {
-            // If they are tied, move both. 
-            // Note: In strict merge sort you'd move one, but for ties, moving both preserves the "tied block"
             mergedResult.push(leftRemaining.shift());
             mergedResult.push(rightRemaining.shift());
             continue;
         }
 
-        // 5. Manual Vote
+        // H. Exit loop for User Input
         currentPair = { a: leftItem, b: rightItem };
         renderServant('cardA', leftItem);
         renderServant('cardB', rightItem);
         updateProgressBar();
-        break; // Stop loop to wait for user input
+        break; 
     }
 }
 
 function vote(winnerIdx) {
-    if (!currentPair || leftRemaining.length === 0 || rightRemaining.length === 0) return;
+    if (!currentPair) return;
     
     pushToUndo();
 
@@ -285,14 +284,13 @@ function vote(winnerIdx) {
         mergedResult.push(rightRemaining.shift());
     } else if (winnerIdx === 'tie') {
         history.push({ tie: [leftItem.id, rightItem.id] });
-        // Move both so the user doesn't have to compare them again immediately
         mergedResult.push(leftRemaining.shift());
         mergedResult.push(rightRemaining.shift());
     }
 
     saveState();
-    // Use setTimeout to allow the UI to breathe and prevent recursion depth issues
-    setTimeout(showNextPair, 0);
+    // Use requestAnimationFrame or setTimeout to ensure the UI remains responsive
+    requestAnimationFrame(showNextPair);
 }
 
 // ------------------ 7. Render & Progress ------------------
@@ -500,6 +498,22 @@ function startNewRanking() {
 async function start() {
     await loadServants();
     loadState();
+}
+
+function copyToClipboard() {
+    const text = Array.from(document.getElementById('rank-list').children)
+        .map(el => el.innerText).join('\n');
+    navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+}
+
+function downloadAsTxt() {
+    const text = Array.from(document.getElementById('rank-list').children)
+        .map(el => el.innerText).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const anchor = document.createElement('a');
+    anchor.download = 'fgo_ranking.txt';
+    anchor.href = (window.webkitURL || window.URL).createObjectURL(blob);
+    anchor.click();
 }
 
 start();
