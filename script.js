@@ -220,6 +220,8 @@ function vote(winnerIdx) {
         if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
         mergedRound[currentMergeIndex / 2].push(leftList.shift());
         mergedRound[currentMergeIndex / 2].push(rightList.shift());
+
+        history.push({ tie: [mergedRound[currentMergeIndex / 2][0].id, mergedRound[currentMergeIndex / 2][1].id] });
     } else {
         // Existing winner logic
         const win = winnerIdx === 0 ? leftList.shift() : rightList.shift();
@@ -259,15 +261,22 @@ function renderServant(elementId, servant) {
 function updateProgressBar() {
     const n = activePool.length;
     let known = 0;
+
     for (let i = 0; i < n; i++) {
         const a = activePool[i].id;
         for (let j = i + 1; j < n; j++) {
             const b = activePool[j].id;
-            if (hasPath(a, b) || hasPath(b, a)) known++;
+            if (hasPath(a, b) || hasPath(b, a)) {
+                known += 1; // Strictly known
+            } else if (history.some(h => h.tie && h.tie.includes(a) && h.tie.includes(b))) {
+                known += 0.5; // Tie counts as half
+            }
         }
     }
+
     const max = n * (n - 1) / 2;
     const percent = Math.round((known / max) * 100) || 0;
+
     document.getElementById('progress-bar').style.width = percent + "%";
     document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
 }
