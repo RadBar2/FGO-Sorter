@@ -14,6 +14,28 @@ let mergeRounds = [];
 let currentRound = 0;
 let currentMergeIndex = 0;
 
+const classMap = {
+    "shielder": "Shielder",
+    "saber": "Saber",
+    "archer": "Archer",
+    "lancer": "Lancer",
+    "rider": "Rider",
+    "caster": "Caster",
+    "assassin": "Assassin",
+    "berserker": "Berserker",
+    "ruler": "Ruler",
+    "avenger": "Avenger",
+    "moonCancer": "Moon Cancer",
+    "alterEgo": "Alter Ego",
+    "pretender": "Pretender",
+    "foreigner": "Foreigner",
+    "beast": "Beast",
+};
+
+function formatClassName(className) {
+    return classMap[className] || className.charAt(0).toUpperCase() + className.slice(1);
+}
+
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
 function updateTheme(e) {
@@ -249,7 +271,7 @@ function renderServant(elementId, servant) {
         <img src="${servant.img || ''}" loading="lazy">
         <div class="card-info">
             <b>${servant.name}</b><br>
-            ${servant.rarity}★ ${servant.class}
+            ${servant.rarity}★ ${formatClassName(servant.class)}
         </div>
     `;
 }
@@ -316,7 +338,8 @@ function showResults() {
     sortedGroups.forEach(group => {
         group.forEach(id => {
             const s = allServants.find(x => x.id === id);
-            html += `<div>${rank}. <b>${s.name}</b> (${s.class})</div>`;
+            // Use formatClassName here:
+            html += `<div>${rank}. <b>${s.name}</b> (${formatClassName(s.class)})</div>`;
         });
         rank += group.length;
     });
