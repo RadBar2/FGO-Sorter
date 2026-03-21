@@ -242,10 +242,6 @@ function vote(winnerIdx) {
     
     saveState();
     showNextPair();
-
-    setTimeout(() => {
-        updateProgressBar();
-    }, 0);
 }
 
 // ------------------ 7. Render & Progress ------------------
