@@ -1,23 +1,23 @@
 
-/* Default */
+:root {
+  --bg: white;
+  --text: black;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --text: #e0e0e0;
+  }
+}
+
 body {
-    background: white;
-    color: #121212;
+    background-color: var(--bg);
+    color: var(--text);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     text-align: center;
     margin: 0;
     padding: 20px;
-}
-
-@media (prefers-color-scheme: dark) {
-    body {
-        background: #121212;
-        color: #e0e0e0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        text-align: center;
-        margin: 0;
-        padding: 20px;
-    }
 }
 
 .container { max-width: 900px; margin: auto; }

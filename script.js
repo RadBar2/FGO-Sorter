@@ -12,6 +12,19 @@ let currentRound = 0;
 let currentMergeIndex = 0;
 let currentPair = null;
 
+const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
+
+function updateTheme(e) {
+  if (e.matches) {
+    document.body.classList.add('dark');
+  } else {
+    document.body.classList.remove('dark');
+  }
+}
+
+darkMode.addEventListener('change', updateTheme);
+updateTheme(darkMode);
+
 // ------------------ 1. Load Servants ------------------
 async function loadServants() {
     const url = "https://api.atlasacademy.io/export/JP/nice_servant_lang_en.json"
@@ -55,7 +68,7 @@ async function loadServants() {
                 rarity: servant.rarity,
                 gender: (servant.gender || "unknown").toLowerCase().replace("gender", ""),
                 img: getServantImage(servant),
-                npTypes // ← NEW
+                npTypes 
             };
         });
 
