@@ -188,59 +188,55 @@ let rightRemaining = [];
 let mergedResult = [];
 
 function showNextPair() {
-    // 1. Process as much as we can in this "chunk"
     let iterations = 0;
     
-    while (leftRemaining.length > 0 || rightRemaining.length > 0 || currentQueue.length > 0) {
+    // Changed the condition: as long as there is ANY work to do in the queue or current merge
+    while (currentQueue.length > 0 || leftRemaining.length > 0 || rightRemaining.length > 0 || nextQueue.length > 0) {
         iterations++;
-        
-        // Safety: If we've processed 100 items without needing user input,
-        // yield control to the browser so the UI stays alive
         if (iterations > 100) {
             requestAnimationFrame(showNextPair);
             return;
         }
 
-        // --- Your existing logic (A through G) ---
+        // 1. If we are totally out of items to compare in the current two lists
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
             
-            // If we have a result from a previous merge, push it to nextQueue
             if (mergedResult.length > 0) {
                 nextQueue.push(mergedResult);
                 mergedResult = [];
             }
 
-            // B. If currentQueue is empty, we finished a whole round of merges
+            // 2. Round is over: Move nextQueue to currentQueue
             if (currentQueue.length === 0) {
                 if (nextQueue.length === 1) {
-                    // Sorting is completely finished
                     activePool = nextQueue[0];
                     showResults();
                     return; 
                 }
                 currentQueue = nextQueue;
                 nextQueue = [];
-                // If there's still nothing to compare, break safety
+                // Safety: if after swapping we are still empty, something is wrong
                 if (currentQueue.length === 0) return;
             }
 
-            // C. Handle the "Odd one out" (only one list left in the queue)
+            // 3. Handle Odd One Out
             if (currentQueue.length === 1) {
                 nextQueue.push(currentQueue.shift());
-                continue; // Back to top to check if nextQueue is finished
+                // Force the loop to run again to check if the round is now over
+                continue; 
             }
 
-            // D. Start a new merge between two lists
-            leftRemaining = currentQueue.shift();
-            rightRemaining = currentQueue.shift();
+            // 4. Start NEW merge
+            leftRemaining = currentQueue.shift() || [];
+            rightRemaining = currentQueue.shift() || [];
             mergedResult = [];
         }
 
-        // E. Standard Merge Logic (move remaining if one side is empty)
+        // 5. If one side is empty, finalize this specific merge pair
         if (leftRemaining.length === 0) {
             mergedResult.push(...rightRemaining);
             rightRemaining = [];
-            continue; 
+            continue; // This will loop back to step 1 and either start a new merge or end round
         }
         if (rightRemaining.length === 0) {
             mergedResult.push(...leftRemaining);
@@ -248,11 +244,10 @@ function showNextPair() {
             continue;
         }
 
-        // F. Manual Comparison logic
+        // 6. Comparison Logic
         const leftItem = leftRemaining[0];
         const rightItem = rightRemaining[0];
 
-        // G. Transitivity / Tie Automated Checks
         if (hasPath(leftItem.id, rightItem.id)) {
             mergedResult.push(leftRemaining.shift());
             continue;
@@ -269,11 +264,12 @@ function showNextPair() {
             continue;
         }
 
+        // 7. USER INPUT REQUIRED
         currentPair = { a: leftItem, b: rightItem };
         renderServant('cardA', leftItem);
         renderServant('cardB', rightItem);
         updateProgressBar();
-        return; // Exit completely, waiting for user click
+        return; 
     }
 }
 
