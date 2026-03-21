@@ -11,6 +11,8 @@ let mergeRounds = [];
 let currentRound = 0;
 let currentMergeIndex = 0;
 let currentPair = null;
+let currentQueue = []; // pairs to compare in the current round
+let nextQueue = [];    // winners/tied groups for the next round
 
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -146,111 +148,79 @@ function initRanking() {
 
 // ------------------ 4. Merge-Round Setup ------------------
 function initMergeRounds(pool) {
-    mergeRounds = [pool.map(s => [s])];
-    currentRound = 0;
-    currentMergeIndex = 0;
+    // Wrap each servant in a single-item array for uniform handling
+    currentQueue = pool.map(s => [s]);
+    nextQueue = [];
     showNextPair();
 }
 
 // ------------------ 5. Show Next Pair (ITERATIVE) ------------------
 function showNextPair() {
-    while (true) {
-        const round = mergeRounds[currentRound];
-
-        // If the round is finished
-        if (currentMergeIndex >= round.length - 1) {
-            // Move the last unmerged sublist if any
-            if (currentMergeIndex === round.length - 1) {
-                if (round[currentMergeIndex].length > 0) {
-                    mergedRound.push(round[currentMergeIndex]);
-                }
-            }
-
-            // Only move to the next round if there are multiple sublists to merge
-            if (mergedRound.length > 1) {
-                mergeRounds.push(mergedRound);
-                currentRound++;
-                currentMergeIndex = 0;
-                mergedRound = [];
-            } else if (mergedRound.length === 1 && mergedRound[0].length === activePool.length) {
-                // Sorting completed
-                activePool = mergedRound[0];
-                showResults();
-                return;
-            }
-            continue;
-        }
-
-        const left = round[currentMergeIndex];
-        const right = round[currentMergeIndex + 1];
-
-        // Transitivity check
-        if (hasPath(left[0].id, right[0].id)) {
-            vote(0); // Left wins automatically
+    // If no more pairs in current queue, move to next round
+    if (currentQueue.length === 0) {
+        if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
+            // Sorting is complete
+            activePool = nextQueue[0];
+            showResults();
             return;
         }
-        if (hasPath(right[0].id, left[0].id)) {
-            vote(1); // Right wins automatically
-            return;
-        }
+        currentQueue = nextQueue;
+        nextQueue = [];
+    }
 
-        // Manual vote required
-        currentPair = { a: left[0], b: right[0] };
-        renderServant('cardA', currentPair.a);
-        renderServant('cardB', currentPair.b);
-        updateProgressBar();
+    // If only one sublist remains, carry it over to next round
+    if (currentQueue.length === 1) {
+        nextQueue.push(currentQueue.shift());
+        showNextPair();
         return;
     }
+
+    const left = currentQueue.shift();
+    const right = currentQueue.shift();
+
+    // Transitivity check
+    if (hasPath(left[0].id, right[0].id)) return vote(0, left, right);
+    if (hasPath(right[0].id, left[0].id)) return vote(1, left, right);
+
+    // Manual vote
+    currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
+    renderServant('cardA', left[0]);
+    renderServant('cardB', right[0]);
+    updateProgressBar();
 }
 
 // ------------------ 6. Vote ------------------
-function vote(winnerIdx) {
+function vote(winnerIdx, leftList = currentPair.leftList, rightList = currentPair.rightList) {
+    // Save undo state
     undoStack.push(JSON.parse(JSON.stringify({
-        mergeRounds, mergedRound, currentRound, currentMergeIndex, dag, history, reachable: serializeReachable()
+        currentQueue, nextQueue, dag, history, reachable: serializeReachable()
     })));
     if (undoStack.length > 20) undoStack.shift();
 
-    const round = mergeRounds[currentRound];
-    if (!round || !round[currentMergeIndex + 1]) return;
-
-    const leftList = round[currentMergeIndex];
-    const rightList = round[currentMergeIndex + 1];
+    let group = [];
 
     if (winnerIdx === 'tie') {
-        if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
-        mergedRound[currentMergeIndex / 2].push(leftList.shift());
-        mergedRound[currentMergeIndex / 2].push(rightList.shift());
-
-        // Record tie
-        history.push({ tie: [mergedRound[currentMergeIndex / 2][0].id, mergedRound[currentMergeIndex / 2][1].id] });
-
+        // Merge both sides equally
+        group.push(...leftList, ...rightList);
+        history.push({ tie: [leftList[0].id, rightList[0].id] });
     } else {
         // Determine winner and all losers
         const winnerList = winnerIdx === 0 ? leftList : rightList;
         const loserList = winnerIdx === 0 ? rightList : leftList;
 
-        // Add edges from winner to **all remaining losers** in this pair
-        winnerList.forEach(win => {
-            loserList.forEach(los => addEdge(win.id, los.id));
-        });
+        // Add DAG edges from winner to every loser in this pair
+        winnerList.forEach(win => loserList.forEach(los => addEdge(win.id, los.id)));
 
-        // Record history for each loser
-        winnerList.forEach(win => {
-            loserList.forEach(los => history.push({ win: win.id, los: los.id }));
-        });
+        // Record history for undo/progress
+        winnerList.forEach(win => loserList.forEach(los => history.push({ win: win.id, los: los.id })));
 
-        // Move winner(s) to mergedRound
-        if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
-        mergedRound[currentMergeIndex / 2].push(...winnerList.splice(0, winnerList.length));
-
-        // Move remaining survivors if one side is empty
-        if (leftList.length === 0 || rightList.length === 0) {
-            const survivors = leftList.length > 0 ? leftList : rightList;
-            while (survivors.length > 0) mergedRound[currentMergeIndex / 2].push(survivors.shift());
-        }
+        // Move winner(s) forward
+        group.push(...winnerList);
     }
 
-    currentMergeIndex += 2;
+    // Push merged group into nextQueue
+    nextQueue.push(group);
+
     saveState();
     showNextPair();
 }
