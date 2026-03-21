@@ -1,18 +1,12 @@
 let allServants = [];
 let activePool = [];
-let dag = {};
-let reachable = {};
-let history = [];
-let undoStack = []; 
+let dag = {};          // winner → losers
+let history = [];      // vote history: {win, los} or {tie: [a,b]}
+let undoStack = [];
 
-// Merge tournament state
-let mergedRound = [];
-let mergeRounds = [];       
-let currentRound = 0;
-let currentMergeIndex = 0;
+let currentQueue = []; // pairs to compare this round
+let nextQueue = [];    // winners/tied groups for next round
 let currentPair = null;
-let currentQueue = []; // pairs to compare in the current round
-let nextQueue = [];    // winners/tied groups for the next round
 
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -148,7 +142,7 @@ function initRanking() {
 
 // ------------------ 4. Merge-Round Setup ------------------
 function initMergeRounds(pool) {
-    // Wrap each servant in a single-item array for uniform handling
+    // Wrap each servant in a single-element array
     currentQueue = pool.map(s => [s]);
     nextQueue = [];
     showNextPair();
@@ -156,10 +150,10 @@ function initMergeRounds(pool) {
 
 // ------------------ 5. Show Next Pair (ITERATIVE) ------------------
 function showNextPair() {
-    // If no more pairs in current queue, move to next round
+    // If no more pairs in current round, advance to next round
     if (currentQueue.length === 0) {
         if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
-            // Sorting is complete
+            // Sorting complete
             activePool = nextQueue[0];
             showResults();
             return;
@@ -168,7 +162,7 @@ function showNextPair() {
         nextQueue = [];
     }
 
-    // If only one sublist remains, carry it over to next round
+    // If only one group remains, carry it over
     if (currentQueue.length === 1) {
         nextQueue.push(currentQueue.shift());
         showNextPair();
@@ -178,11 +172,11 @@ function showNextPair() {
     const left = currentQueue.shift();
     const right = currentQueue.shift();
 
-    // Transitivity check
+    // Check transitivity (automatic wins)
     if (hasPath(left[0].id, right[0].id)) return vote(0, left, right);
     if (hasPath(right[0].id, left[0].id)) return vote(1, left, right);
 
-    // Manual vote
+    // Otherwise, manual vote required
     currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
     renderServant('cardA', left[0]);
     renderServant('cardB', right[0]);
@@ -190,39 +184,38 @@ function showNextPair() {
 }
 
 // ------------------ 6. Vote ------------------
-function vote(winnerIdx, leftList = currentPair.leftList, rightList = currentPair.rightList) {
-    // Save undo state
-    undoStack.push(JSON.parse(JSON.stringify({
-        currentQueue, nextQueue, dag, history, reachable: serializeReachable()
-    })));
-    if (undoStack.length > 20) undoStack.shift();
-
-    let group = [];
-
-    if (winnerIdx === 'tie') {
-        // Merge both sides equally
-        group.push(...leftList, ...rightList);
-        history.push({ tie: [leftList[0].id, rightList[0].id] });
-    } else {
-        // Determine winner and all losers
-        const winnerList = winnerIdx === 0 ? leftList : rightList;
-        const loserList = winnerIdx === 0 ? rightList : leftList;
-
-        // Add DAG edges from winner to every loser in this pair
-        winnerList.forEach(win => loserList.forEach(los => addEdge(win.id, los.id)));
-
-        // Record history for undo/progress
-        winnerList.forEach(win => loserList.forEach(los => history.push({ win: win.id, los: los.id })));
-
-        // Move winner(s) forward
-        group.push(...winnerList);
+function showNextPair() {
+    // If no more pairs in current round, advance to next round
+    if (currentQueue.length === 0) {
+        if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
+            // Sorting complete
+            activePool = nextQueue[0];
+            showResults();
+            return;
+        }
+        currentQueue = nextQueue;
+        nextQueue = [];
     }
 
-    // Push merged group into nextQueue
-    nextQueue.push(group);
+    // If only one group remains, carry it over
+    if (currentQueue.length === 1) {
+        nextQueue.push(currentQueue.shift());
+        showNextPair();
+        return;
+    }
 
-    saveState();
-    showNextPair();
+    const left = currentQueue.shift();
+    const right = currentQueue.shift();
+
+    // Check transitivity (automatic wins)
+    if (hasPath(left[0].id, right[0].id)) return vote(0, left, right);
+    if (hasPath(right[0].id, left[0].id)) return vote(1, left, right);
+
+    // Otherwise, manual vote required
+    currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
+    renderServant('cardA', left[0]);
+    renderServant('cardB', right[0]);
+    updateProgressBar();
 }
 
 // ------------------ 7. Render & Progress ------------------
@@ -244,18 +237,15 @@ function updateProgressBar() {
         const a = activePool[i].id;
         for (let j = i + 1; j < n; j++) {
             const b = activePool[j].id;
-            if (hasPath(a, b) || hasPath(b, a)) {
-                known += 1; // Strictly known
-            } else if (history.some(h => h.tie && h.tie.includes(a) && h.tie.includes(b))) {
-                known += 0.5; // Tie counts as half
-            }
+            if (hasPath(a, b) || hasPath(b, a)) known++;
+            else if (history.some(h => h.tie && h.tie.includes(a) && h.tie.includes(b))) known += 0.5;
         }
     }
 
     const max = n * (n - 1) / 2;
     const percent = Math.round((known / max) * 100) || 0;
 
-    document.getElementById('progress-bar').style.width = percent + "%";
+    document.getElementById('progress-bar').style.width = percent + '%';
     document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
 }
 
@@ -264,40 +254,49 @@ function showResults() {
     document.getElementById('arena').style.display = 'none';
     document.getElementById('results').style.display = 'block';
 
-    const sortedIds = topologicalSort();
-    let lastId = null;
-    let rank = 0;
-    let html = '';
+    // Build tie groups
+    const tieGroups = {};
+    activePool.forEach(s => tieGroups[s.id] = new Set([s.id]));
 
-    sortedIds.forEach((id, idx) => {
-        const s = allServants.find(x => x.id === id);
-
-        // Increment rank only if previous node has a DAG edge to this one
-        if (!lastId || hasPath(lastId, id)) {
-            rank = idx + 1;
+    history.forEach(h => {
+        if (h.tie) {
+            const [a, b] = h.tie;
+            const union = new Set([...tieGroups[a], ...tieGroups[b]]);
+            union.forEach(id => tieGroups[id] = union);
         }
-        html += `<div>${rank}. <b>${s.name}</b> (${s.class})</div>`;
-        lastId = id;
     });
 
-    document.getElementById('rank-list').innerHTML = html;
-}
-
-function topologicalSort() {
+    // Topologically sort based on DAG and tie groups
     const nodes = activePool.map(s => s.id);
-    const sorted = [];
     const visited = new Set();
+    const sortedGroups = [];
 
     const visit = (n) => {
         if (visited.has(n)) return;
         visited.add(n);
+
         (dag[n] || []).forEach(visit);
-        sorted.unshift(n); 
+
+        const group = Array.from(tieGroups[n]);
+        if (!sortedGroups.some(g => g.some(id => group.includes(id)))) {
+            sortedGroups.push(group);
+        }
     };
 
     nodes.forEach(visit);
 
-    return sorted;
+    // Render HTML with tied ranks
+    let html = '';
+    let rank = 1;
+    sortedGroups.forEach(group => {
+        group.forEach(id => {
+            const s = allServants.find(x => x.id === id);
+            html += `<div>${rank}. <b>${s.name}</b> (${s.class})</div>`;
+        });
+        rank += group.length;
+    });
+
+    document.getElementById('rank-list').innerHTML = html;
 }
 
 // ------------------ 9. Undo / Save / Load ------------------
