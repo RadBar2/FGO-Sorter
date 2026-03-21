@@ -172,8 +172,6 @@ function initRanking() {
 
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('arena').style.display = 'block';
-
-    initMergeRounds(activePool);
 }
 
 // ------------------ 4. Merge-Round Setup ------------------
