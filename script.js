@@ -189,26 +189,34 @@ let mergedResult = [];
 
 function showNextPair() {
     while (true) {
-        // 1. If we aren't currently merging two lists, grab the next two from the queue
+        // 1. Reset/Fetch new lists to merge
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
             if (currentQueue.length <= 1) {
                 if (currentQueue.length === 1) nextQueue.push(currentQueue.shift());
                 
-                if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
-                    activePool = nextQueue[0];
-                    showResults();
-                    return;
+                if (nextQueue.length === 1) {
+                    // Check if we are truly done
+                    if (nextQueue[0].length === activePool.length) {
+                        activePool = nextQueue[0];
+                        showResults();
+                        return;
+                    }
                 }
-                currentQueue = nextQueue;
-                nextQueue = [];
-                continue; 
+                
+                if (nextQueue.length > 0) {
+                    currentQueue = nextQueue;
+                    nextQueue = [];
+                    continue; 
+                } else {
+                    return; // Safety exit
+                }
             }
             leftRemaining = currentQueue.shift();
             rightRemaining = currentQueue.shift();
             mergedResult = [];
         }
 
-        // 2. If one side is empty, push the rest of the other side to mergedResult
+        // 2. Handle empty sides
         if (leftRemaining.length === 0) {
             mergedResult.push(...rightRemaining);
             rightRemaining = [];
@@ -222,67 +230,69 @@ function showNextPair() {
             continue;
         }
 
+        // 3. Get actual servant objects
         const leftItem = leftRemaining[0];
         const rightItem = rightRemaining[0];
 
-        // 3. Automated Check (Transitivity + Ties)
-        const leftId = leftItem.id;
-        const rightId = rightItem.id;
+        if (!leftItem || !rightItem) {
+            console.error("Found undefined item in queue");
+            return;
+        }
 
-        // Check if a win is already known
-        if (hasPath(leftId, rightId)) {
+        // 4. Automated Transitivity / Tie Checks
+        if (hasPath(leftItem.id, rightItem.id)) {
             mergedResult.push(leftRemaining.shift());
             continue;
         }
-        if (hasPath(rightId, leftId)) {
+        if (hasPath(rightItem.id, leftItem.id)) {
+            mergedResult.push(rightRemaining.shift());
+            continue;
+        }
+        
+        const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
+        if (isTied) {
+            // If they are tied, move both. 
+            // Note: In strict merge sort you'd move one, but for ties, moving both preserves the "tied block"
+            mergedResult.push(leftRemaining.shift());
             mergedResult.push(rightRemaining.shift());
             continue;
         }
 
-        // NEW: Check if a TIE is already known
-        const isAlreadyTied = history.some(h => h.tie && h.tie.includes(leftId) && h.tie.includes(rightId));
-        if (isAlreadyTied) {
-            mergedResult.push(leftRemaining.shift());
-            mergedResult.push(rightRemaining.shift());
-            continue;
-        }
-
-        // 4. Manual Vote Required
+        // 5. Manual Vote
         currentPair = { a: leftItem, b: rightItem };
         renderServant('cardA', leftItem);
         renderServant('cardB', rightItem);
         updateProgressBar();
-        break;
+        break; // Stop loop to wait for user input
     }
 }
 
 function vote(winnerIdx) {
-    if (!currentPair) return;
+    if (!currentPair || leftRemaining.length === 0 || rightRemaining.length === 0) return;
+    
     pushToUndo();
 
     const leftItem = leftRemaining[0];
     const rightItem = rightRemaining[0];
 
-    if (winnerIdx === 0) { // Left Wins
+    if (winnerIdx === 0) {
         addEdge(leftItem.id, rightItem.id);
         history.push({ win: leftItem.id, los: rightItem.id });
         mergedResult.push(leftRemaining.shift());
-    } else if (winnerIdx === 1) { // Right Wins
+    } else if (winnerIdx === 1) {
         addEdge(rightItem.id, leftItem.id);
         history.push({ win: rightItem.id, los: leftItem.id });
         mergedResult.push(rightRemaining.shift());
-    } else { // Tie
-        // Record the tie in history
+    } else if (winnerIdx === 'tie') {
         history.push({ tie: [leftItem.id, rightItem.id] });
-        
-        // IMPORTANT: To keep the merge sort stable, we move BOTH to the result.
-        // This effectively treats them as a single "unit" in the next round.
+        // Move both so the user doesn't have to compare them again immediately
         mergedResult.push(leftRemaining.shift());
         mergedResult.push(rightRemaining.shift());
     }
 
     saveState();
-    showNextPair();
+    // Use setTimeout to allow the UI to breathe and prevent recursion depth issues
+    setTimeout(showNextPair, 0);
 }
 
 // ------------------ 7. Render & Progress ------------------
