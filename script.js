@@ -157,23 +157,24 @@ function showNextPair() {
     while (true) {
         const round = mergeRounds[currentRound];
 
-        // Checks if all the merges were done for the round
+        // If the round is finished
         if (currentMergeIndex >= round.length - 1) {
-            // If there's a lone sublist at the end, move it up
+            // Move the last unmerged sublist if any
             if (currentMergeIndex === round.length - 1) {
-                mergedRound.push(round[currentMergeIndex]);
+                if (round[currentMergeIndex].length > 0) {
+                    mergedRound.push(round[currentMergeIndex]);
+                }
             }
-            
-            // Move to the next round
-            mergeRounds.push(mergedRound);
-            mergedRound = [];
-            currentRound++;
-            currentMergeIndex = 0;
 
-            // If only one sublist remains and it's full, the sorting is completed.
-            if (mergeRounds[currentRound].length === 1 && 
-                mergeRounds[currentRound][0].length === activePool.length) {
-                activePool = mergeRounds[currentRound][0];
+            // Only move to the next round if there are multiple sublists to merge
+            if (mergedRound.length > 1) {
+                mergeRounds.push(mergedRound);
+                currentRound++;
+                currentMergeIndex = 0;
+                mergedRound = [];
+            } else if (mergedRound.length === 1 && mergedRound[0].length === activePool.length) {
+                // Sorting completed
+                activePool = mergedRound[0];
                 showResults();
                 return;
             }
@@ -193,7 +194,7 @@ function showNextPair() {
             return;
         }
 
-        // Manual Vote Required
+        // Manual vote required
         currentPair = { a: left[0], b: right[0] };
         renderServant('cardA', currentPair.a);
         renderServant('cardB', currentPair.b);
