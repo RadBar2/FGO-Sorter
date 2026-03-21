@@ -188,8 +188,6 @@ let rightRemaining = [];
 let mergedResult = [];
 
 function showNextPair() {
-    let iterations = 0;
-    
     if (currentQueue.length === 0 && leftRemaining.length === 0 && rightRemaining.length === 0) {
         if (nextQueue.length === 1) {
             activePool = nextQueue[0];
@@ -199,13 +197,7 @@ function showNextPair() {
     }
 
     // Changed the condition: as long as there is ANY work to do in the queue or current merge
-    while (currentQueue.length > 0 || leftRemaining.length > 0 || rightRemaining.length > 0 || nextQueue.length > 0) {
-        iterations++;
-        if (iterations > 100) {
-            requestAnimationFrame(showNextPair);
-            return;
-        }
-
+    while (true) {
         // 1. If we are totally out of items to compare in the current two lists
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
             
@@ -223,61 +215,57 @@ function showNextPair() {
                 }
                 currentQueue = nextQueue;
                 nextQueue = [];
-                continue;
             }
 
-            // 3. Handle Odd One Out
-            if (currentQueue.length === 1) {
+            if (currentQueue >= 2) {
+                leftRemaining = currentQueue.shift();
+                rightRemaining = currentQueue.shift();
+            } else if (currentQueue.length === 1) {
                 nextQueue.push(currentQueue.shift());
                 // Force the loop to run again to check if the round is now over
                 continue; 
             }
-
-            // 4. Start NEW merge
-            leftRemaining = currentQueue.shift() || [];
-            rightRemaining = currentQueue.shift() || [];
-            mergedResult = [];
         }
 
         // 5. If one side is empty, finalize this specific merge pair
-        if (leftRemaining.length === 0) {
-            mergedResult.push(...rightRemaining);
-            rightRemaining = [];
-            continue; // This will loop back to step 1 and either start a new merge or end round
-        }
-        if (rightRemaining.length === 0) {
-            mergedResult.push(...leftRemaining);
-            leftRemaining = [];
-            continue;
-        }
+        if (leftRemaining.length > 0 && rightRemaining.length > 0) {
+            const leftItem = leftRemaining[0];
+            const rightItem = rightRemaining[0];
 
-        // 6. Comparison Logic
-        const leftItem = leftRemaining[0];
-        const rightItem = rightRemaining[0];
+            if (hasPath(leftItem.id, rightItem.id)) {
+                mergedResult.push(leftRemaining.shift());
+                continue;
+            }
 
-        if (hasPath(leftItem.id, rightItem.id)) {
-            mergedResult.push(leftRemaining.shift());
-            continue;
-        }
-        if (hasPath(rightItem.id, leftItem.id)) {
-            mergedResult.push(rightRemaining.shift());
-            continue;
-        }
+            if (hasPath(rightItem.id, leftItem.id)) {
+                mergedResult.push(rightRemaining.shift());
+                continue;
+            }
 
-        const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
-        if (isTied) {
-            mergedResult.push(leftRemaining.shift());
-            mergedResult.push(rightRemaining.shift());
-            continue;
-        }
+            const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
+            if (isTied) {
+                mergedResult.push(leftRemaining.shift());
+                mergedResult.push(rightRemaining.shift());
+                continue;
+            }
 
-        // 7. USER INPUT REQUIRED
-        currentPair = { a: leftItem, b: rightItem };
-        renderServant('cardA', leftItem);
-        renderServant('cardB', rightItem);
-        updateProgressBar();
-        return; 
-    }
+            // 7. USER INPUT REQUIRED
+            currentPair = { a: leftItem, b: rightItem };
+            renderServant('cardA', leftItem);
+            renderServant('cardB', rightItem);
+            updateProgressBar();
+            return; 
+        } else {
+            if (leftRemaining.length > 0) {
+                mergedResult.push(...leftRemaining);
+                leftRemaining = [];
+            }
+            if (rightRemaining.length > 0) {
+                mergedResult.push(...rightRemaining);
+                rightRemaining = [];
+            }
+        }
+    } 
 }
 
 function vote(winnerIdx) {
