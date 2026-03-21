@@ -216,32 +216,39 @@ function vote(winnerIdx) {
     const rightList = round[currentMergeIndex + 1];
 
     if (winnerIdx === 'tie') {
-        // Merge both equally, no DAG edge
         if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
         mergedRound[currentMergeIndex / 2].push(leftList.shift());
         mergedRound[currentMergeIndex / 2].push(rightList.shift());
 
+        // Record tie
         history.push({ tie: [mergedRound[currentMergeIndex / 2][0].id, mergedRound[currentMergeIndex / 2][1].id] });
+
     } else {
-        // Existing winner logic
-        const win = winnerIdx === 0 ? leftList.shift() : rightList.shift();
-        const los = winnerIdx === 0 ? rightList[0] : leftList[0];
+        // Determine winner and all losers
+        const winnerList = winnerIdx === 0 ? leftList : rightList;
+        const loserList = winnerIdx === 0 ? rightList : leftList;
 
-        if (los) {
-            addEdge(win.id, los.id);
-            history.push({ win: win.id, los: los.id });
-        }
+        // Add edges from winner to **all remaining losers** in this pair
+        winnerList.forEach(win => {
+            loserList.forEach(los => addEdge(win.id, los.id));
+        });
 
+        // Record history for each loser
+        winnerList.forEach(win => {
+            loserList.forEach(los => history.push({ win: win.id, los: los.id }));
+        });
+
+        // Move winner(s) to mergedRound
         if (!mergedRound[currentMergeIndex / 2]) mergedRound[currentMergeIndex / 2] = [];
-        mergedRound[currentMergeIndex / 2].push(win);
+        mergedRound[currentMergeIndex / 2].push(...winnerList.splice(0, winnerList.length));
 
+        // Move remaining survivors if one side is empty
         if (leftList.length === 0 || rightList.length === 0) {
             const survivors = leftList.length > 0 ? leftList : rightList;
             while (survivors.length > 0) mergedRound[currentMergeIndex / 2].push(survivors.shift());
         }
     }
 
-    // Move to next pair
     currentMergeIndex += 2;
     saveState();
     showNextPair();
