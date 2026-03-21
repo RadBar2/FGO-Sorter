@@ -1,12 +1,18 @@
 let allServants = [];
 let activePool = [];
-let dag = {};          // winner → losers
-let history = [];      // vote history: {win, los} or {tie: [a,b]}
+let dag = {};
+let reachable = {};
+let history = [];
 let undoStack = [];
 
 let currentQueue = []; // pairs to compare this round
 let nextQueue = [];    // winners/tied groups for next round
 let currentPair = null;
+
+let mergedRound = [];
+let mergeRounds = [];
+let currentRound = 0;
+let currentMergeIndex = 0;
 
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
