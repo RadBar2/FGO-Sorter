@@ -156,37 +156,44 @@ function initMergeRounds(pool) {
 
 // ------------------ 5. Show Next Pair (ITERATIVE) ------------------
 function showNextPair() {
-    // If no more pairs in current round, advance to next round
-    if (currentQueue.length === 0) {
-        if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
-            // Sorting complete
-            activePool = nextQueue[0];
-            showResults();
-            return;
+    while (true) {
+        // 1. Check if the current round is over
+        if (currentQueue.length === 0) {
+            if (nextQueue.length === 1 && nextQueue[0].length === activePool.length) {
+                activePool = nextQueue[0];
+                showResults();
+                return; // Exit loop, we're done!
+            }
+            currentQueue = nextQueue;
+            nextQueue = [];
         }
-        currentQueue = nextQueue;
-        nextQueue = [];
+
+        // 2. Handle the "odd one out" (Single group remains)
+        if (currentQueue.length === 1) {
+            nextQueue.push(currentQueue.shift());
+            continue; // Go to next iteration of WHILE loop instead of recursing
+        }
+
+        const left = currentQueue.shift();
+        const right = currentQueue.shift();
+
+        // 3. Automated Transitivity check
+        if (hasPath(left[0].id, right[0].id)) {
+            autoVote(0, left, right);
+            continue; // Skip to next pair automatically
+        }
+        if (hasPath(right[0].id, left[0].id)) {
+            autoVote(1, left, right);
+            continue; // Skip to next pair automatically
+        }
+
+        // 4. Manual vote required - BREAK the loop to wait for user input
+        currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
+        renderServant('cardA', left[0]);
+        renderServant('cardB', right[0]);
+        updateProgressBar();
+        break; 
     }
-
-    // If only one group remains, carry it over
-    if (currentQueue.length === 1) {
-        nextQueue.push(currentQueue.shift());
-        showNextPair();
-        return;
-    }
-
-    const left = currentQueue.shift();
-    const right = currentQueue.shift();
-
-    // Check transitivity (automatic wins)
-    if (hasPath(left[0].id, right[0].id)) return vote(0, left, right);
-    if (hasPath(right[0].id, left[0].id)) return vote(1, left, right);
-
-    // Otherwise, manual vote required
-    currentPair = { a: left[0], b: right[0], leftList: left, rightList: right };
-    renderServant('cardA', left[0]);
-    renderServant('cardB', right[0]);
-    updateProgressBar();
 }
 
 // ------------------ 6. Vote ------------------
