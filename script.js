@@ -196,8 +196,12 @@ function showNextPair() {
         }
     }
 
+    let safetyCounter = 0;
+
     // Changed the condition: as long as there is ANY work to do in the queue or current merge
-    while (true) {
+    while (safetyCounter < 1000) {
+        safetyCounter++;
+
         // 1. If we are totally out of items to compare in the current two lists
         if (leftRemaining.length === 0 && rightRemaining.length === 0) {
             
@@ -208,19 +212,23 @@ function showNextPair() {
 
             // 2. Round is over: Move nextQueue to currentQueue
             if (currentQueue.length === 0) {
-                if (nextQueue.length === 1) {
-                    activePool = nextQueue[0];
-                    showResults();
-                    return; 
+                if (nextQueue.length <= 1) {
+                    if (nextQueue.length === 1) {
+                        activePool = nextQueue[0];
+                        showResults();
+                        return; 
+                    }
+                    return;
                 }
                 currentQueue = nextQueue;
                 nextQueue = [];
+                continue;
             }
 
             if (currentQueue >= 2) {
                 leftRemaining = currentQueue.shift();
                 rightRemaining = currentQueue.shift();
-            } else if (currentQueue.length === 1) {
+            } else {
                 nextQueue.push(currentQueue.shift());
                 // Force the loop to run again to check if the round is now over
                 continue; 
@@ -228,45 +236,50 @@ function showNextPair() {
         }
 
         // 5. If one side is empty, finalize this specific merge pair
-        if (leftRemaining.length > 0 && rightRemaining.length > 0) {
-            const leftItem = leftRemaining[0];
-            const rightItem = rightRemaining[0];
-
-            if (hasPath(leftItem.id, rightItem.id)) {
-                mergedResult.push(leftRemaining.shift());
-                continue;
-            }
-
-            if (hasPath(rightItem.id, leftItem.id)) {
-                mergedResult.push(rightRemaining.shift());
-                continue;
-            }
-
-            const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
-            if (isTied) {
-                mergedResult.push(leftRemaining.shift());
-                mergedResult.push(rightRemaining.shift());
-                continue;
-            }
-
-            // 7. USER INPUT REQUIRED
-            currentPair = { a: leftItem, b: rightItem };
-            renderServant('cardA', leftItem);
-            renderServant('cardB', rightItem);
-            updateProgressBar();
-            return; 
-        } else {
+        if (leftRemaining.length === 0 || rightRemaining.length === 0) {
             if (leftRemaining.length > 0) {
                 mergedResult.push(...leftRemaining);
                 leftRemaining = [];
             }
+
             if (rightRemaining.length > 0) {
                 mergedResult.push(...rightRemaining);
                 rightRemaining = [];
             }
+
+            continue;
         }
-    } 
-}
+
+        const leftItem = leftRemaining[0];
+        const rightItem = rightRemaining[0];
+
+        if (hasPath(leftItem.id, rightItem.id)) {
+            mergedResult.push(leftRemaining.shift());
+            continue;
+        }
+
+        if (hasPath(rightItem.id, leftItem.id)) {
+            mergedResult.push(rightRemaining.shift());
+            continue;
+        }
+
+        const isTied = history.some(h => h.tie && h.tie.includes(leftItem.id) && h.tie.includes(rightItem.id));
+        if (isTied) {
+            mergedResult.push(leftRemaining.shift());
+            mergedResult.push(rightRemaining.shift());
+            continue;
+        }
+
+        currentPair = { a: leftItem, b: rightItem };
+        renderServant('cardA', leftItem);
+        renderServant('cardB', rightItem);
+        updateProgressBar();
+        return; 
+    }
+
+    setTimeout(() => showNextPair(), 1);
+} 
+
 
 function vote(winnerIdx) {
     if (!currentPair) return;
