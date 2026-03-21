@@ -428,10 +428,11 @@ function saveState() {
         dag,
         history,
         activePool,
-        mergeRounds,
-        mergedRound,
-        currentRound,
-        currentMergeIndex,
+        currentQueue,
+        nextQueue,
+        leftRemaining,
+        rightRemaining,
+        mergedResult,
         reachable: serializeReachable() // Reachable uses Sets, which need conversion
     };
     localStorage.setItem('fgo_sorter_save', JSON.stringify(state));
@@ -455,6 +456,12 @@ function loadState() {
     dag = saved.dag || {};
     history = saved.history || [];
     activePool = saved.activePool;
+
+    currentQueue = saved.currentQueue || [];
+    nextQueue = saved.nextQueue || [];
+    leftRemaining = saved.leftRemaining || [];
+    rightRemaining = saved.rightRemaining || [];
+    mergedResult = saved.mergedResult || [];
     
     // Restore reachable Sets
     reachable = {};
@@ -464,13 +471,10 @@ function loadState() {
         }
     }
 
-    // IMPORTANT: After loading data, we need to re-initialize the queues
-    // or restore the exact queue state from the save.
-    // For now, let's just re-init the merge rounds:
-    initMergeRounds(activePool);
-
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('arena').style.display = 'block';
+
+    showNextPair();
 }
 
 // ------------------ 10. New Ranking ------------------
