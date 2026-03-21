@@ -201,13 +201,16 @@ function showNextPair() {
 }
 
 // ------------------ 6. Vote ------------------
-// New helper to handle the data side of a win/loss
+// ------------------ 6. Vote ------------------
 function processWin(winnerIdx, leftList, rightList, isManual = true) {
     let group = [];
     
     if (winnerIdx === 'tie') {
+        // We combine the lists into one "tied" group
         group.push(...leftList, ...rightList);
-        history.push({ tie: [leftList[0].id, rightList[0].id] });
+        if (isManual) {
+            history.push({ tie: [leftList[0].id, rightList[0].id] });
+        }
     } else {
         const winnerList = winnerIdx === 0 ? leftList : rightList;
         const loserList = winnerIdx === 0 ? rightList : leftList;
@@ -218,23 +221,31 @@ function processWin(winnerIdx, leftList, rightList, isManual = true) {
                 if (isManual) history.push({ win: win.id, los: los.id });
             });
         });
+        // The winner(s) move forward to the next round of the merge
         group.push(...winnerList);
     }
 
-    nextQueue.push(group);
+    // CRITICAL: This was likely failing because it was outside the logic block 
+    // or receiving empty groups.
+    if (group.length > 0) {
+        nextQueue.push(group);
+    }
 }
 
-// Updated vote function for the buttons
 function vote(winnerIdx) {
+    if (!currentPair) return;
+    
     pushToUndo();
     
-    // Process the current pair
-    processWin(winnerIdx, [currentPair.a], [currentPair.b], true);
+    // Use the full lists from the current pair (important for merge sort)
+    processWin(winnerIdx, currentPair.leftList, currentPair.rightList, true);
     
     saveState();
-    
-    // Call showNextPair once to find the next manual matchup
     showNextPair();
+
+    setTimeout(() => {
+        updateProgressBar();
+    }, 0);
 }
 
 // ------------------ 7. Render & Progress ------------------
