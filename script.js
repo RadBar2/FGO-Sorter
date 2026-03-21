@@ -307,14 +307,19 @@ function renderServant(elementId, servant) {
 }
 
 function updateProgressBar() {
-    const n = activePool.length;
-    if (n <= 1) return;
+    const n = activePool ? activePool.length : 0;
+    if (n < 2) {
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').innerText = `Progress: 0%`;
+    }
 
     const estimatedMaxVisits = Math.ceil(n * Math.log2(n));
 
-    let percent = Math.round((history.lenght / estimatedMaxVisits) * 100);
+    let percent = Math.round((history.lenght / Math.max(estimatedMaxVisits), 1) * 100);
 
+    if(isNaN(percent)) percent = 0;
     if (percent > 99) percent = 99;
+    if (percent < 0) percent = 0;
 
     document.getElementById('progress-bar').style.width = percent + '%';
     document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
@@ -363,6 +368,9 @@ function showResults() {
     });
 
     document.getElementById('rank-list').innerHTML = html;
+
+    document.getElementById('progress-bar').style.width = '100%';
+    document.getElementById('progress-text').innerText = `Progress: 100%`;
 }
 
 // ------------------ 9. Undo / Save / Load ------------------
