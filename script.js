@@ -225,7 +225,7 @@ function showNextPair() {
                 continue;
             }
 
-            if (currentQueue >= 2) {
+            if (currentQueue.length >= 2) {
                 leftRemaining = currentQueue.shift();
                 rightRemaining = currentQueue.shift();
             } else {
