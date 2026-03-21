@@ -340,8 +340,8 @@ function updateProgressBar() {
 
 // ------------------ 8. Results ------------------
 function showResults() {
-    document.getElementById('arena').style.display = 'none';
-    document.getElementById('results').style.display = 'block';
+    //document.getElementById('arena').style.display = 'none';
+    //document.getElementById('results').style.display = 'block';
 
     // 1. Group IDs by ties
     const tieGroups = {};
