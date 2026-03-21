@@ -321,19 +321,28 @@ function renderServant(elementId, servant) {
 
 function updateProgressBar() {
     const n = activePool ? activePool.length : 0;
+    
+    // 1. Handle empty or small pools immediately
     if (n < 2) {
         document.getElementById('progress-bar').style.width = '0%';
         document.getElementById('progress-text').innerText = `Progress: 0%`;
+        return;
     }
 
-    const estimatedMaxVisits = Math.ceil(n * Math.log2(n));
+    // 2. Calculate the estimate (ensure it's at least 1 to avoid division by zero)
+    const estimatedMaxVisits = Math.max(Math.ceil(n * Math.log2(n)), 1);
 
-    let percent = Math.round((history.lenght / Math.max(estimatedMaxVisits), 1) * 100);
+    // 3. Calculate percentage (Fixed 'length' typo)
+    let percent = Math.round((history.length / estimatedMaxVisits) * 100);
 
-    if(isNaN(percent)) percent = 0;
-    if (percent > 99) percent = 99;
+    // 4. Sanitize the value
+    if (isNaN(percent)) percent = 0;
+    
+    // Allow it to hit 100, but clamp the bottom at 0
+    if (percent > 100) percent = 100;
     if (percent < 0) percent = 0;
 
+    // 5. Update UI
     document.getElementById('progress-bar').style.width = percent + '%';
     document.getElementById('progress-text').innerText = `Progress: ${percent}%`;
 }
@@ -381,9 +390,6 @@ function showResults() {
     });
 
     document.getElementById('rank-list').innerHTML = html;
-
-    document.getElementById('progress-bar').style.width = '100%';
-    document.getElementById('progress-text').innerText = `Progress: 100%`;
 }
 
 // ------------------ 9. Undo / Save / Load ------------------
