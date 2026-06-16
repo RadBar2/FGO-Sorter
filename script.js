@@ -1,3 +1,5 @@
+const SERVANT_CACHE_KEY = 'fgo_servant_data_cache';
+
 let allServants = [];
 let activePool = [];
 let dag = {};
@@ -51,12 +53,38 @@ updateTheme(darkMode);
 
 // ------------------ 1. Load Servants ------------------
 async function loadServants() {
-    const url = "https://api.atlasacademy.io/export/JP/nice_servant_lang_en.json"
+    const url = "https://api.atlasacademy.io/export/JP/nice_servant_lang_en.json";
 
-    const res = await fetch(url);
-    const data = await res.json();
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API request failed");
 
-    allServants = data
+        const rawData = await res.json();
+        
+        // 1. Process data first
+        const processed = processServantData(rawData);
+        
+        // 2. Cache the small, processed version
+        localStorage.setItem(SERVANT_CACHE_KEY, JSON.stringify(processed));
+        
+        // 3. Set global variable and finish
+        allServants = processed;
+        preloadImages();
+    } catch (error) {
+        console.warn("API load failed, checking cache...", error);
+        const cached = localStorage.getItem(SERVANT_CACHE_KEY);
+        
+        if (cached) {
+            allServants = JSON.parse(cached);
+            preloadImages();
+        } else {
+            alert("Unable to load data and no offline cache found.");
+        }
+    }
+}
+
+function processServantData(data) {
+    return data
         .filter(s => s.collectionNo)
         .map(servant => {
             const nps = servant.noblePhantasms || [];
@@ -95,8 +123,6 @@ async function loadServants() {
                 npTypes 
             };
         });
-
-    preloadImages();
 }
 
 function getServantImage(servant) {
